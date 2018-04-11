@@ -1,0 +1,41 @@
+- hosts: flannel
+  tasks:
+    - name: get flannel
+      get_url:
+        url: https://github.com/coreos/flannel/releases/download/v0.6.2/flanneld-amd64
+        dest: /usr/local/bin/flanneld
+        mode: 0755
+    - name: push test configuration for etcd
+      copy:
+        src: files/flannel-network-config.json
+        dest: /root/flannel-network-config.json
+    - name: ensure etcd has the right configuration
+      shell: etcdctl set /coreos.com/network/config < /root/flannel-network-config.json
+    - name: configure systemd service for flannel
+      template:
+        src: templates/flanneld.service.j2
+        dest: /lib/systemd/system/flanneld.service
+    - name: reload systemd daemon
+      systemd:
+        daemon-reload: yes
+        enabled: yes
+        name: flanneld
+        state: restarted
+    - name: read the subnet.env file
+      shell: cat /run/flannel/subnet.env
+      register: subnet_env
+    - name: force taking docker options
+      lineinfile:
+        path: /lib/systemd/system/docker.service
+        backrefs: yes
+        regexp: "ExecStart=/usr/bin/dockerd .*"
+        line: "ExecStart=/usr/bin/dockerd --bip={{ subnet_env.stdout_lines.1.split('=').1 }}"
+      register: res
+    - name: restart docker
+      systemd:
+        name: docker
+        state: restarted
+        enabled: yes
+        daemon_reload: yes
+      when: res.changed == True
+    - shell: "iptables -P FORWARD ACCEPT"

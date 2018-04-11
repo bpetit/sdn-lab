@@ -1,0 +1,16 @@
+[Unit]
+Description=Etcd registry service
+Documentation=etcd --help
+
+[Service]
+ExecStart=/usr/local/bin/etcd --name {{ etcd_node_name }} --initial-advertise-peer-urls http://{{ ansible_default_ipv4.address }}:2380 \
+--listen-peer-urls http://{{ ansible_default_ipv4.address }}:2380 \
+--listen-client-urls http://{{ ansible_default_ipv4.address }}:2379,http://127.0.0.1:2379 \
+--advertise-client-urls http://{{ ansible_default_ipv4.address }}:2379 \
+--initial-cluster-token etcd-cluster \
+--initial-cluster {{ etcd_nodes_string }}\
+--initial-cluster-state new
+ExecStop=/usr/bin/killall etcd
+
+[Install]
+WantedBy=sysinit.target

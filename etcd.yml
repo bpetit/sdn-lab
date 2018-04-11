@@ -1,0 +1,40 @@
+- hosts: etcd
+  vars:
+    etcd_package: etcd-v3.0.12-linux-amd64
+    etcd_archive_path: "/usr/local/share/{{ etcd_package }}.tar.gz"
+    etcd_path: /usr/local/share/etcd
+    etcd_url: "https://github.com/coreos/etcd/releases/download/v3.0.12/{{ etcd_package }}.tar.gz"
+  tasks:
+    - name: download etcd
+      get_url:
+        dest: "{{ etcd_archive_path }}"
+        url: "{{ etcd_url }}"
+    - name: unarchive etcd
+      unarchive:
+        dest: /usr/local/share
+        src: "{{ etcd_archive_path }}"
+        remote_src: yes
+      register: unarchive
+    - name: symlink the etcd directory
+      file:
+        state: link
+        src: "/usr/local/share/{{ etcd_package }}"
+        dest: "{{ etcd_path }}"
+    - name: create symlinks to etcd binaries
+      file:
+        state: link
+        src: "{{ etcd_path }}/{{ item }}"
+        dest: "/usr/local/bin/{{ item }}"
+      with_items:
+        - etcd
+        - etcdctl
+    - name: create service configuration for etcd
+      template:
+        src: templates/etcd.service.j2
+        dest: /lib/systemd/system/etcd.service
+    - name: enable service
+      systemd:
+        name: etcd
+        enabled: True
+        state: started
+        daemon_reload: yes

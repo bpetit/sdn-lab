@@ -1,0 +1,10 @@
+[Unit]
+Description=Flanneld networking service
+Documentation=flanneld --help
+
+[Service]
+ExecStart=/usr/local/bin/flanneld -iface={{ ansible_default_ipv4.address}}
+ExecStop=/usr/bin/killall flanneld
+
+[Install]
+WantedBy=sysinit.target
